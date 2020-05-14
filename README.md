@@ -5,3 +5,5 @@
 #### [EasyRouter](https://github.com/Xiasm/EasyRouter)
 
 #### [EasyRouter](https://github.com/Xiasm/EasyRouter)
+
+#### [如何debug自定义AbstractProcessor](https://www.jianshu.com/p/80a14bc35000)

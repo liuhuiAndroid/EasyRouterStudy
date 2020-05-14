@@ -40,7 +40,7 @@ public class ClassUtils {
         ApplicationInfo applicationInfo = context.getPackageManager().getApplicationInfo(context.getPackageName(), 0);
         List<String> sourcePaths = new ArrayList<>();
         sourcePaths.add(applicationInfo.sourceDir);
-        //instant run
+        // instant run
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             if (null != applicationInfo.splitSourceDirs) {
                 sourcePaths.addAll(Arrays.asList(applicationInfo.splitSourceDirs));
@@ -62,6 +62,7 @@ public class ClassUtils {
             throws PackageManager.NameNotFoundException, InterruptedException {
         final Set<String> classNames = new HashSet<>();
         // 获得所有的apk文件(instant run会产生很多split apk)
+        // instant run在Android Studio 3.5以后找不到了，暂时不关心
         List<String> paths = getSourcePaths(context);
         // 使用同步计数器判断均处理完成
         final CountDownLatch countDownLatch = new CountDownLatch(paths.size());
@@ -101,6 +102,5 @@ public class ClassUtils {
         countDownLatch.await();
         return classNames;
     }
-
 
 }
