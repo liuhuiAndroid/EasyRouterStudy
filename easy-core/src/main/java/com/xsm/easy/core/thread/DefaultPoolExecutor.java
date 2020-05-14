@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Author: 夏胜明
  * Date: 2018/4/3 0003
  * Email: xiasem@163.com
- * Description:
+ * Description: 线程池封装
  */
-
 public class DefaultPoolExecutor {
 
     public static ThreadPoolExecutor executor;
+
     private static final ThreadFactory sThreadFactory = new ThreadFactory() {
         private final AtomicInteger mCount = new AtomicInteger(1);
 
@@ -44,31 +44,4 @@ public class DefaultPoolExecutor {
         return executor;
     }
 
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

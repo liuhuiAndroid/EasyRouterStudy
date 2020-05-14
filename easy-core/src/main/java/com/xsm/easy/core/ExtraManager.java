@@ -36,11 +36,10 @@ public class ExtraManager {
 
     /**
      * 注入
-     *
      * @param instance
      */
     public void loadExtras(Activity instance) {
-        //查找对应activity的缓存
+        // 查找对应activity的缓存
         String className = instance.getClass().getName();
         IExtra iExtra = classCache.get(className);
         try {
@@ -48,7 +47,9 @@ public class ExtraManager {
                 iExtra = (IExtra) Class.forName(instance.getClass().getName() +
                         SUFFIX_AUTOWIRED).getConstructor().newInstance();
             }
+            // 将msg从intent里面拿出来赋给msg属性
             iExtra.loadExtra(instance);
+            // 加入缓存
             classCache.put(className, iExtra);
         } catch (Exception e) {
             e.printStackTrace();

@@ -42,12 +42,19 @@ import javax.lang.model.util.Types;
  * Author: 夏胜明
  * Date: 2018/3/29 0029
  * Email: xiasem@163.com
- * Description:
+ * Description: 注解处理器，用来在编译期扫描加入@Route注解的类，然后做处理。
  */
 
 @AutoService(Processor.class)
 /**
-  处理器接收的参数 替代 {@link AbstractProcessor#getSupportedOptions()} 函数
+ * 处理器接收的参数 替代 {@link AbstractProcessor#getSupportedOptions()} 函数
+ * 拿到每个module的名字，用来生成对应module下存放路由信息的类文件名
+ * 我们需要在 module 的 gradle 下配置如下
+ * javaCompileOptions {
+ *      annotationProcessorOptions {
+ *          arguments = [moduleName: project.getName()]
+ *      }
+ * }
  */
 @SupportedOptions(Constant.ARGUMENTS_NAME)
 /**
@@ -56,6 +63,7 @@ import javax.lang.model.util.Types;
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 /**
  * 注册给哪些注解的  替代 {@link AbstractProcessor#getSupportedAnnotationTypes()} 函数
+ * 指定了需要处理的注解的路径地址,在此就是 Route.class 的路径地址
  */
 @SupportedAnnotationTypes(Constant.ANNOTATION_TYPE_ROUTE)
 
@@ -91,14 +99,15 @@ public class RouterProcessor extends AbstractProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnvironment) {
         super.init(processingEnvironment);
-        //获得apt的日志输出
+        // 获得 apt 的日志输出
         log = Log.newLog(processingEnvironment.getMessager());
         elementUtils = processingEnvironment.getElementUtils();
         typeUtils = processingEnvironment.getTypeUtils();
         filerUtils = processingEnvironment.getFiler();
 
-        //参数是模块名 为了防止多模块/组件化开发的时候 生成相同的 xx$$ROOT$$文件
+        // 参数是模块名 为了防止多模块/组件化开发的时候 生成相同的 xx$$ROOT$$文件
         Map<String, String> options = processingEnvironment.getOptions();
+        // 获取 module 配置的 moduleName
         if (!Utils.isEmpty(options)) {
             moduleName = options.get(Constant.ARGUMENTS_NAME);
         }
@@ -109,7 +118,7 @@ public class RouterProcessor extends AbstractProcessor {
     }
 
     /**
-     *
+     * 处理 Route 注解
      * @param set 使用了支持处理注解的节点集合
      * @param roundEnvironment 表示当前或是之前的运行环境,可以通过该对象查找找到的注解。
      * @return true 表示后续处理器不会再处理(已经处理)
@@ -128,7 +137,7 @@ public class RouterProcessor extends AbstractProcessor {
     }
 
     private void processorRoute(Set<? extends Element> rootElements) {
-        //获得Activity这个类的节点信息
+        // 获得Activity这个类的节点信息
         TypeElement activity = elementUtils.getTypeElement(Constant.ACTIVITY);
         TypeElement service = elementUtils.getTypeElement(Constant.ISERVICE);
         for (Element element : rootElements) {
@@ -146,24 +155,26 @@ public class RouterProcessor extends AbstractProcessor {
             }
             categories(routeMeta);
         }
+        // 拿到IRootGroup和IRootRoot的字节码信息
         TypeElement iRouteGroup = elementUtils.getTypeElement(Constant.IROUTE_GROUP);
         TypeElement iRouteRoot = elementUtils.getTypeElement(Constant.IROUTE_ROOT);
 
-        //生成Group记录分组表
+        // 使用javapoet，生成Group Java文件，记录分组表
         generatedGroup(iRouteGroup);
 
-        //生成Root类 作用：记录<分组，对应的Group类>
+        // 使用javapoet，生成Root Java文件，作用：记录<分组，对应的Group类>
         generatedRoot(iRouteRoot, iRouteGroup);
     }
 
     /**
-     * 生成Root类  作用：记录<分组，对应的Group类>
+     * 生成Root类，作用：记录<分组，对应的Group类>
      * @param iRouteRoot
      * @param iRouteGroup
      */
     private void generatedRoot(TypeElement iRouteRoot, TypeElement iRouteGroup) {
-        //创建参数类型 Map<String,Class<? extends IRouteGroup>> routes>
-        //Wildcard 通配符
+        // 创建参数类型 Map<String,Class<? extends IRouteGroup>> routes>
+        // Wildcard 通配符
+        // ParameterizedTypeName是创建参数类型的api
         ParameterizedTypeName parameterizedTypeName = ParameterizedTypeName.get(
                 ClassName.get(Map.class),
                 ClassName.get(String.class),
@@ -171,18 +182,20 @@ public class RouterProcessor extends AbstractProcessor {
                         ClassName.get(Class.class),
                         WildcardTypeName.subtypeOf(ClassName.get(iRouteGroup))
                 ));
-        //参数 Map<String,Class<? extends IRouteGroup>> routes> routes
+        // 参数 Map<String,Class<? extends IRouteGroup>> routes> routes
+        // ParameterSpec是创建参数的实现
         ParameterSpec parameter = ParameterSpec.builder(parameterizedTypeName, "routes").build();
-        //函数 public void loadInfo(Map<String,Class<? extends IRouteGroup>> routes> routes)
+        // 函数 public void loadInfo(Map<String,Class<? extends IRouteGroup>> routes> routes)
+        // MethodSpec是函数的生成实现
         MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder(Constant.METHOD_LOAD_INTO)
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
                 .addParameter(parameter);
-        //函数体
+        // 函数体
         for (Map.Entry<String, String> entry : rootMap.entrySet()) {
             methodBuilder.addStatement("routes.put($S, $T.class)", entry.getKey(), ClassName.get(Constant.PACKAGE_OF_GENERATE_FILE, entry.getValue()));
         }
-        //生成$Root$类
+        // 生成$Root$类
         String className = Constant.NAME_OF_ROOT + moduleName;
         TypeSpec typeSpec = TypeSpec.classBuilder(className)
                 .addSuperinterface(ClassName.get(iRouteRoot))
@@ -190,6 +203,8 @@ public class RouterProcessor extends AbstractProcessor {
                 .addMethod(methodBuilder.build())
                 .build();
         try {
+            // 调用JavaFile api生成类文件
+            // PACKAGE_OF_GENERATE_FILE 指定生成的类文件的目录
             JavaFile.builder(Constant.PACKAGE_OF_GENERATE_FILE, typeSpec).build().writeTo(filerUtils);
             log.i("Generated RouteRoot：" + Constant.PACKAGE_OF_GENERATE_FILE + "." + className);
         } catch (IOException e) {
@@ -198,7 +213,7 @@ public class RouterProcessor extends AbstractProcessor {
     }
 
     private void generatedGroup(TypeElement iRouteGroup) {
-        //创建参数类型 Map<String, RouteMeta>
+        // 创建参数类型 Map<String, RouteMeta>
         ParameterizedTypeName parameterizedTypeName = ParameterizedTypeName.get(
                 ClassName.get(Map.class),
                 ClassName.get(String.class),
@@ -214,7 +229,7 @@ public class RouterProcessor extends AbstractProcessor {
             String groupName = entry.getKey();
             List<RouteMeta> groupData = entry.getValue();
             for (RouteMeta routeMeta : groupData) {
-                //函数体的添加
+                // 函数体的添加
                 methodBuilder.addStatement("atlas.put($S,$T.build($T.$L,$T.class,$S,$S))",
                         routeMeta.getPath(),
                         ClassName.get(RouteMeta.class),
@@ -237,7 +252,6 @@ public class RouterProcessor extends AbstractProcessor {
                 e.printStackTrace();
             }
             rootMap.put(groupName, groupClassName);
-
         }
     }
 

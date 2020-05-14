@@ -40,7 +40,7 @@ import static javax.lang.model.element.Modifier.PUBLIC;
  * Author: 夏胜明
  * Date: 2018/8/20 0020
  * Email: xiasem@163.com
- * Description:
+ * Description: 处理Activity参数注入的注解处理器
  */
 @AutoService(Processor.class)
 @SupportedOptions(Constant.ARGUMENTS_NAME)
@@ -81,10 +81,13 @@ public class ExtraProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
         if (!Utils.isEmpty(set)) {
+            // 拿到所有被Extra注解的属性集合
             Set<? extends Element> elements = roundEnvironment.getElementsAnnotatedWith(Extra.class);
             if (!Utils.isEmpty(elements)) {
                 try {
+                    // 将属性所在类和属性集合保存起来
                     categories(elements);
+                    // 将要依赖的类和依赖的属性信息以java文件的形式存起来
                     generateAutoWired();
                 } catch (IOException e) {
                     e.printStackTrace();

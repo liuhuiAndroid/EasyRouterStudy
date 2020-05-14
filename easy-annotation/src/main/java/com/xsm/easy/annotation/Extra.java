@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
  * Author: 夏胜明
  * Date: 2018/8/20 0020
  * Email: xiasem@163.com
- * Description:
+ * Description: 参数注入的注解,记录了需要被注入的类和属性
  */
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.CLASS)

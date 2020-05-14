@@ -51,6 +51,7 @@ public class ClassUtils {
 
     /**
      * 得到路由表的类名
+     * 通过开启子线程，去扫描apk中所有的dex，遍历找到所有包名为packageName的类名，然后将类名再保存到classNames集合里
      * @param context
      * @param packageName
      * @return
@@ -60,8 +61,9 @@ public class ClassUtils {
     public static Set<String> getFileNameByPackageName(Application context, final String packageName)
             throws PackageManager.NameNotFoundException, InterruptedException {
         final Set<String> classNames = new HashSet<>();
+        // 获得所有的apk文件(instant run会产生很多split apk)
         List<String> paths = getSourcePaths(context);
-        //使用同步计数器判断均处理完成
+        // 使用同步计数器判断均处理完成
         final CountDownLatch countDownLatch = new CountDownLatch(paths.size());
         ThreadPoolExecutor threadPoolExecutor = DefaultPoolExecutor.newDefaultPoolExecutor(paths.size());
         for (final String path : paths) {
@@ -70,7 +72,7 @@ public class ClassUtils {
                 public void run() {
                     DexFile dexFile = null;
                     try {
-                        //加载 apk中的dex 并遍历 获得所有包名为 {packageName} 的类
+                        // 加载apk中的dex并遍历，获得所有包名为{packageName}的类
                         dexFile = new DexFile(path);
                         Enumeration<String> dexEntries = dexFile.entries();
                         while (dexEntries.hasMoreElements()) {
@@ -89,13 +91,13 @@ public class ClassUtils {
                                 e.printStackTrace();
                             }
                         }
-                        //释放一个
+                        // 释放一个
                         countDownLatch.countDown();
                     }
                 }
             });
         }
-        //等待执行完成
+        // 等待执行完成
         countDownLatch.await();
         return classNames;
     }

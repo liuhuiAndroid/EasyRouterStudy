@@ -8,9 +8,8 @@ import javax.lang.model.element.Element;
  * Author: 夏胜明
  * Date: 2018/3/29 0029
  * Email: xiasem@163.com
- * Description:
+ * Description: 保存ActivityClass的所有信息
  */
-
 public class RouteMeta {
     public enum Type {
         ACTIVITY,ISERVICE

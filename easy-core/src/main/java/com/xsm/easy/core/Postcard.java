@@ -16,10 +16,10 @@ import java.util.ArrayList;
  * Author: 夏胜明
  * Date: 2018/4/24 0024
  * Email: xiasem@163.com
- * Description:
+ * Description: 跳卡
  */
-
 public class Postcard extends RouteMeta {
+
     private Bundle mBundle;
     private int flags = -1;
     //新版风格

@@ -15,9 +15,8 @@ import java.util.Map;
  * Author: 夏胜明
  * Date: 2018/4/24 0024
  * Email: xiasem@163.com
- * Description:
+ * Description: 专门用来存放路由映射关系的类
  */
-
 public class Warehouse {
 
     // root 映射表 保存分组信息

@@ -74,24 +74,22 @@ public class EasyRouter {
 
 
     /**
-     * 分组表制作
+     * 初始化的核心：分组表制作
      */
     private static void loadInfo() throws PackageManager.NameNotFoundException, InterruptedException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        //获得所有 apt生成的路由类的全类名 (路由表)
+        // 获得所有apt生成的路由类的全类名 (路由表)
         Set<String> routerMap = ClassUtils.getFileNameByPackageName(mContext, ROUTE_ROOT_PAKCAGE);
         for (String className : routerMap) {
             if (className.startsWith(ROUTE_ROOT_PAKCAGE + "." + SDK_NAME + SEPARATOR + SUFFIX_ROOT)) {
-                //root中注册的是分组信息 将分组信息加入仓库中
+                // root中注册的是分组信息 将分组信息加入仓库中
                 ((IRouteRoot) Class.forName(className).getConstructor().newInstance()).loadInto(Warehouse.groupsIndex);
             } else if (className.startsWith(ROUTE_ROOT_PAKCAGE + "." + SDK_NAME + SEPARATOR + SUFFIX_INTERCEPTOR)) {
-
                 ((IInterceptorGroup) Class.forName(className).getConstructor().newInstance()).loadInto(Warehouse.interceptorsIndex);
             }
         }
         for (Map.Entry<String, Class<? extends IRouteGroup>> stringClassEntry : Warehouse.groupsIndex.entrySet()) {
             Log.d(TAG, "Root映射表[ " + stringClassEntry.getKey() + " : " + stringClassEntry.getValue() + "]");
         }
-
     }
 
     public Postcard build(String path) {
@@ -133,10 +131,17 @@ public class EasyRouter {
         }
     }
 
+    /**
+     * 跳转的核心方法
+     *
+     * @param context
+     * @param postcard
+     * @param requestCode
+     * @param callback
+     * @return
+     */
     protected Object navigation(final Context context, final Postcard postcard, final int requestCode, final NavigationCallback callback) {
-
         if (callback != null) {
-
             InterceptorImpl.onInterceptions(postcard, new InterceptorCallback() {
                 @Override
                 public void onNext(Postcard postcard) {
@@ -145,15 +150,12 @@ public class EasyRouter {
 
                 @Override
                 public void onInterrupt(String interruptMsg) {
-
                     callback.onInterrupt(new Throwable(interruptMsg));
                 }
             });
-        }else{
-
+        } else {
             return _navigation(context, postcard, requestCode, callback);
         }
-
         return null;
     }
 
@@ -171,8 +173,8 @@ public class EasyRouter {
         if (null != callback) {
             callback.onFound(postcard);
         }
-
         switch (postcard.getType()) {
+            // 通过ActivityCompat.startActivity启动Activity
             case ACTIVITY:
                 final Context currentContext = null == context ? mContext : context;
                 final Intent intent = new Intent(currentContext, postcard.getDestination());
@@ -194,7 +196,6 @@ public class EasyRouter {
                             ActivityCompat.startActivity(currentContext, intent, postcard
                                     .getOptionsBundle());
                         }
-
                         if ((0 != postcard.getEnterAnim() || 0 != postcard.getExitAnim()) &&
                                 currentContext instanceof Activity) {
                             //老版本
@@ -225,23 +226,28 @@ public class EasyRouter {
     private void prepareCard(Postcard card) {
         RouteMeta routeMeta = Warehouse.routes.get(card.getPath());
         if (null == routeMeta) {
+            // 路由地址还没有加载到map里面
+            // 根据当前路由地址的group拿到对应的分组
             Class<? extends IRouteGroup> groupMeta = Warehouse.groupsIndex.get(card.getGroup());
             if (null == groupMeta) {
                 throw new NoRouteFoundException("没找到对应路由：分组=" + card.getGroup() + "   路径=" + card.getPath());
             }
             IRouteGroup iGroupInstance;
             try {
+                // 通过反射创建实例
                 iGroupInstance = groupMeta.getConstructor().newInstance();
             } catch (Exception e) {
                 throw new RuntimeException("路由分组映射表记录失败.", e);
             }
+            // 然后调用实例的loadInfo方法，把它里面保存的映射信息添加到Warehouse.routes
             iGroupInstance.loadInto(Warehouse.routes);
             //已经准备过了就可以移除了 (不会一直存在内存中)
             Warehouse.groupsIndex.remove(card.getGroup());
             //再次进入 else
             prepareCard(card);
         } else {
-            //类 要跳转的activity 或IService实现类
+            // 类 要跳转的activity或IService实现类
+            // 将RouteMeta里面保存的activityClass放入Postcard里面
             card.setDestination(routeMeta.getDestination());
             card.setType(routeMeta.getType());
             switch (routeMeta.getType()) {
